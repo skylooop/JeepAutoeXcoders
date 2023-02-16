@@ -1,2 +1,3 @@
-# JeepAutoeXcoders
-Jax Implementations of different Deep AutoEncoders
+# JeepAutoeXcoders (DeepAutoEncoders on JAX)
+
+
