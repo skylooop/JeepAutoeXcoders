@@ -8,6 +8,9 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
+#Flax
+import flax.linen as nn
+
 # Torch utils
 import torch
 import torch.utils.data as data
@@ -22,7 +25,7 @@ from utils import data
 import matplotlib.pyplot as plt
 import typing as tp
 
-from src.model import TrainerModule
+from src.model import TrainerModule, GoogleNet
 
 
 warnings.filterwarnings("ignore")
@@ -82,7 +85,7 @@ def main(_):
 
     if FLAGS.visualize:
         preprocess.plotting(train_dataset, test_transform)
-        
+
     def train_classifier(*args, num_epochs=200, **kwargs):
         trainer = TrainerModule(*args, **kwargs)
         if not trainer.checkpoint_exists():
@@ -94,6 +97,18 @@ def main(_):
         val_acc = trainer.eval_model(val_loader)
         test_acc = trainer.eval_model(test_loader)
         return trainer, {'val': val_acc, 'test': test_acc}
+
+    googlenet_trainer, googlenet_results = train_classifier(model_class=GoogleNet,
+                                                        model_name="GoogleNet",
+                                                        model_hparams={"num_classes": 10,
+                                                                       "act_fn": nn.relu},
+                                                        optimizer_name="adamw",
+                                                        optimizer_hparams={"lr": 1e-3,
+                                                                           "weight_decay": 1e-4},
+                                                        exmp_imgs=jax.device_put(
+                                                            next(iter(train_loader))[0]),
+                                                        num_epochs=200)
+    print("GoogleNet Results", googlenet_results)
 
 if __name__ == "__main__":
     app.run(main)
