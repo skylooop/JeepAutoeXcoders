@@ -22,11 +22,15 @@ from utils import data
 import matplotlib.pyplot as plt
 import typing as tp
 
+from src.model import TrainerModule
+
+
 warnings.filterwarnings("ignore")
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("dataset_path", default="/home/bobrin_m_s/Projects/tmp", help="Save path for CIFAR10.")
 flags.DEFINE_bool("visualize", default=True, help="Whether to save visualization samples.")
+flags.DEFINE_integer("seed", default=42, help="Seed for initialization.")
 
 dataset_info = namedtuple("Info", ['mean', 'std'])
 
@@ -52,12 +56,12 @@ class PreprocessingCIFAR:
         img_grid = img_grid.permute(1, 2, 0)
 
         plt.figure(figsize=(8,8))
-        plt.title("Augmentation examples on CIFAR10 (Top: augmented, bottom: original)")
+        plt.title("Augmented examples on CIFAR10 (Top: augmented, bottom: original)")
         plt.imshow(img_grid)
         plt.savefig("assets/sample_images.jpg")
 
 def main(_):
-    main_rng = jax.random.PRNGKey(42)
+    main_rng = jax.random.PRNGKey(FLAGS.seed)
     train_dataset = CIFAR10(root=FLAGS.dataset_path, train=True, download=True)
     info = dataset_info((train_dataset.data / 255.0).mean(axis=(0, 1, 2)), 
                         (train_dataset.data / 255.0).std(axis=(0, 1, 2)))
@@ -78,7 +82,18 @@ def main(_):
 
     if FLAGS.visualize:
         preprocess.plotting(train_dataset, test_transform)
+        
+    def train_classifier(*args, num_epochs=200, **kwargs):
+        trainer = TrainerModule(*args, **kwargs)
+        if not trainer.checkpoint_exists():
+            trainer.train_model(train_loader, val_loader, num_epochs=num_epochs)
+            trainer.load_model()
+        else:
+            trainer.load_model(pretrained=True)
 
+        val_acc = trainer.eval_model(val_loader)
+        test_acc = trainer.eval_model(test_loader)
+        return trainer, {'val': val_acc, 'test': test_acc}
 
 if __name__ == "__main__":
     app.run(main)
